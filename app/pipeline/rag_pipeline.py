@@ -6,28 +6,43 @@ llm = get_llm()
 def run_pipeline(query: str):
     results = search(query)
 
+    # safety check
+    if not results:
+        return {
+            "answer": "No relevant results found.",
+            "sources": []
+        }
+
+    # 🔥 limit context (top 3 only)
     context = ""
-    for i, r in enumerate(results):
+    for i, r in enumerate(results[:3]):
         context += f"[{i+1}] {r['title']}\n{r['content']}\n{r['url']}\n\n"
 
+    # 🧠 improved prompt
     prompt = f"""
-    Answer the question using ONLY the sources below.
+You are an AI news assistant.
 
-    Question:
-    {query}
+Answer the user's question using ONLY the sources provided.
 
-    Sources:
-    {context}
+Rules:
+- Give a direct answer (no vague language like "it seems")
+- If user asks for "top 2", return EXACTLY 2 points
+- Be concise and confident
+- Use citations like [1], [2]
+- Ignore irrelevant information
 
-    Instructions:
-    - Cite sources like [1], [2]
-    - Be concise
-    - If unsure, say you don't know
-    """
+Question:
+{query}
+
+Sources:
+{context}
+
+Answer:
+"""
 
     response = llm.invoke(prompt)
 
     return {
         "answer": response.content,
-        "sources": results
+        "sources": results[:3]
     }
